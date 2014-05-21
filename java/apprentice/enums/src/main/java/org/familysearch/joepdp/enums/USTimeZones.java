@@ -1,18 +1,19 @@
 package org.familysearch.joepdp.enums;
 
 public enum USTimeZones {
-    Eastern(-5, -4),
-    Central(-6, -5),
-    Mountain(-7, -6),
-    Pacific(-8, -7),
-    Alaska(-9, -8),
-    Hawaii(-10, -9),
-    Arizona(-8, -8);
+    Eastern("E", -5, -4),
+    Central("C", -6, -5),
+    Mountain("M", -7, -6),
+    Pacific("P", -8, -7),
+    Alaska("AK", -9, -8),
+    Hawaii("HA", -10, -9);
 
+    private String abbreviation;
     private int standardOffset;
     private int daylightOffset;
 
-    USTimeZones(int standardOffset, int daylightOffset){
+    USTimeZones(String abbreviation, int standardOffset, int daylightOffset){
+        this.abbreviation=abbreviation;
         this.standardOffset=standardOffset;
         this.daylightOffset=daylightOffset;
     }
@@ -33,6 +34,14 @@ public enum USTimeZones {
         }
     }
 
+    public String getAbbreviation(boolean inDST){
+        if(inDST){
+            return abbreviation + "DT";
+        } else {
+            return abbreviation + "ST";
+        }
+    }
+
     public int getUtcHour(int tzHour, boolean inDst){
         int offset = getOffset(inDst);
         int uTCHour = tzHour - offset;
@@ -42,6 +51,9 @@ public enum USTimeZones {
     public int getTZHour(int utcHour, boolean inDst){
         int offset = getOffset(inDst);
         int tzHour = utcHour + offset;
+        while(tzHour<0){
+            tzHour=tzHour+24;
+        }
         return tzHour%24;
     }
 }
