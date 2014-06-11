@@ -5,6 +5,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.io.File;
 
@@ -14,25 +15,24 @@ public class Folder {
 
 
     @GET
-    @Produces("application/xml")
-    public String getIt(@PathParam("path") String path) {
+    public Response getIt(@PathParam("path") String path) {
         if(path.equals("")){
             return(getFolderListing(File.listRoots()));
         } else {
             return(getFolderListing(new File(path)));
         }
     }
-    private String getFolderListing(File file){
+    private Response getFolderListing(File file){
         if(file.exists() && file.isDirectory()){
           return getFolderListing(file.listFiles());
         } else {
-            StringBuilder out = new StringBuilder("<folder>");
-            out.append("</folder>");
-            return out.toString();
+            Response.ResponseBuilder responseBuilder = Response.status(404);
+            responseBuilder.entity("File not found");
+            return responseBuilder.build();
         }
     }
 
-    private String getFolderListing(File[] files) {
+    private Response getFolderListing(File[] files) {
         StringBuilder out = new StringBuilder("<folder>");
         for(File fileEntry:files){
             if(fileEntry.isDirectory()){
@@ -54,6 +54,8 @@ public class Folder {
             }
         }
         out.append("</folder>");
-        return out.toString();
+        Response.ResponseBuilder responseBuilder = Response.ok(out.toString());
+        responseBuilder.header("Content-Type", "text/xml");
+        return responseBuilder.build();
     }
 }
