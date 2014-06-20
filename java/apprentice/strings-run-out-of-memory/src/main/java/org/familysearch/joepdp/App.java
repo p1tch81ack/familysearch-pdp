@@ -40,7 +40,9 @@ public class App {
         // Minimum String memory usage (bytes) = 8 * (int) ((((no chars) * 2) + 45) / 8)
         // from: http://www.javamex.com/tutorials/memory/string_memory_usage.shtml
         System.out.println("Ran out of memory after " + i + " strings were created.");
+        int characters = i * STRING_LENGTH;
+        System.out.println("That corresponds to " + NumberFormat.getNumberInstance(Locale.US).format(characters) + " characters.");
         int bytes = i * (8 * (((STRING_LENGTH * 2) + 45) / 8));
-        System.out.println("That corresponds to " + NumberFormat.getNumberInstance(Locale.US).format(bytes) + " bytes of memory.");
+        System.out.println("And it corresponds to " + NumberFormat.getNumberInstance(Locale.US).format(bytes) + " bytes of memory.");
     }
 }
