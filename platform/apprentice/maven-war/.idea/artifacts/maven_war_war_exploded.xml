@@ -1,0 +1,17 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="maven-war:war exploded">
+    <output-path>$PROJECT_DIR$/target/maven-war</output-path>
+    <root id="root">
+      <element id="javaee-facet-resources" facet="maven-war/web/Web" />
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="maven-war" />
+        </element>
+        <element id="directory" name="lib">
+          <element id="library" level="project" name="Maven: org.slf4j:slf4j-api:1.7.7" />
+          <element id="library" level="project" name="Maven: org.slf4j:slf4j-simple:1.7.7" />
+        </element>
+      </element>
+    </root>
+  </artifact>
+</component>
