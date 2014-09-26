@@ -10,7 +10,7 @@ public class HelloWorld {
 
     public static String bodyText(){
         slf4jLogger.info("timestamp=\"{}\" message=\"{}\"", new Date(), "bodyText called");
-        return h2() + h3();
+        return h1() + h2() + h3();
     }
 
     public static String h3() {
@@ -19,6 +19,10 @@ public class HelloWorld {
 
     public static String h2() {
         return "<h2>Hello World!</h2>";
+    }
+
+    public static String h1() {
+        return "<h1>Tomcat:</h1>";
     }
 
     public static void main(String[]args){
