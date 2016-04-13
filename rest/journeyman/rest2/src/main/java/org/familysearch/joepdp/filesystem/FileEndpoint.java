@@ -16,6 +16,7 @@ import javax.ws.rs.core.*;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static javax.ws.rs.core.HttpHeaders.*;
@@ -47,7 +48,6 @@ public class FileEndpoint {
 
   private Response getResponseFromFile(File file, List<String> accepts) throws Exception {
     FileResource rootFileResource=null;
-    Response.ResponseBuilder responseBuilder;
     int status;
     if(file == null) {
       rootFileResource = createRootFileResource();
@@ -84,8 +84,9 @@ public class FileEndpoint {
         valueAsString = stringWriter.toString();      }
       else {
         contentType = APPLICATION_JSON;
-        ObjectMapper om = new ObjectMapper();
-        valueAsString = om.writeValueAsString(rootFileResource);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        valueAsString = objectMapper.writeValueAsString(rootFileResource);
       }
     }
     else {
@@ -93,12 +94,12 @@ public class FileEndpoint {
       contentType = TEXT_PLAIN;
       valueAsString = "File not found";
     }
-    responseBuilder = Response
+    return Response
         .status(status)
         .cacheControl(cacheControl)
         .header(CONTENT_TYPE, contentType)
-        .entity(valueAsString);
-    return responseBuilder.build();
+        .entity(valueAsString)
+        .build();
   }
 
   private FileResource createFileResourceFromFile(File file) throws Exception {
