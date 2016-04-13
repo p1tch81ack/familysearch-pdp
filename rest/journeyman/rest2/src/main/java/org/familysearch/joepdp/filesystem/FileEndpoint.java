@@ -1,64 +1,104 @@
 package org.familysearch.joepdp.filesystem;
 
 import java.io.File;
+import java.io.StringWriter;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import javax.activation.MimetypesFileTypeMap;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.*;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import static javax.ws.rs.core.HttpHeaders.*;
+import static javax.ws.rs.core.MediaType.*;
 
 @Path("/")
 public class FileEndpoint {
-  private
-  @Context
-  UriInfo uriInfo;
+  private final CacheControl cacheControl = new CacheControl();
+  private @Context UriInfo uriInfo;
+
+  public FileEndpoint() {
+    cacheControl.setNoCache(true);
+  }
 
   @GET
   @Path("/file{path:.*}")
-  public Response getFile(@PathParam("path") String path) throws Exception {
+  public Response getFile(@PathParam("path") String path, @HeaderParam(ACCEPT) String acceptsHeader) throws Exception {
+    List<String> accepts = new ArrayList<>();
+    if(acceptsHeader!=null) {
+      accepts = Arrays.asList(acceptsHeader.split(","));
+    }
     if(path.equals("") || path.equals("/")){
-      return getResponseFromFile(null);
+      return getResponseFromFile(null, accepts);
     }
     else {
-      return getResponseFromFile(new File(URLDecoder.decode(path, "UTF-8")));
+      return getResponseFromFile(new File(URLDecoder.decode(path, "UTF-8")), accepts);
     }
   }
 
-  private Response getResponseFromFile(File file) throws Exception {
+  private Response getResponseFromFile(File file, List<String> accepts) throws Exception {
+    FileResource rootFileResource=null;
+    Response.ResponseBuilder responseBuilder;
+    int status;
     if(file == null) {
-      FileResource rootFileResource = createRootFileResource();
+      rootFileResource = createRootFileResource();
       populateFileResourceWithChildren(rootFileResource, File.listRoots());
-      Response.ResponseBuilder responseBuilder = Response.ok(rootFileResource);
-      return responseBuilder.build();
     }
     else if (file.exists()) {
-      if( file.isDirectory()) {
-        FileResource fileResource = createFileResourceFromFile(file);
+      if(file.isDirectory()) {
+        rootFileResource = createFileResourceFromFile(file);
         File parentFile = file.getParentFile();
         if(parentFile != null) {
-          fileResource.setParent(createFileResourceFromFile(parentFile));
+          rootFileResource.setParent(createFileResourceFromFile(parentFile));
         }
         else {
-          fileResource.setParent(createRootFileResource());
+          rootFileResource.setParent(createRootFileResource());
         }
-        populateFileResourceWithChildren(fileResource, file.listFiles());
-        Response.ResponseBuilder responseBuilder = Response.ok(fileResource);
-        return responseBuilder.build();
+        populateFileResourceWithChildren(rootFileResource, file.listFiles());
       }
       else {
-        Response.ResponseBuilder responseBuilder = Response.ok(file, MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(file));
-        return responseBuilder.build();
+        String contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(file);
+        return Response.ok(file, contentType).cacheControl(cacheControl).build();
+      }
+    }
+    String valueAsString;
+    String contentType;
+    if(rootFileResource != null) {
+      status = Response.Status.OK.getStatusCode();
+      if(accepts.contains(APPLICATION_XML) && !accepts.contains(APPLICATION_JSON)) {
+        contentType = APPLICATION_XML;
+        Marshaller marshaller = JAXBContext.newInstance(FileResource.class)
+            .createMarshaller();
+        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+        StringWriter stringWriter = new StringWriter();
+        marshaller.marshal(rootFileResource, stringWriter);
+        valueAsString = stringWriter.toString();      }
+      else {
+        contentType = APPLICATION_JSON;
+        ObjectMapper om = new ObjectMapper();
+        valueAsString = om.writeValueAsString(rootFileResource);
       }
     }
     else {
-      Response.ResponseBuilder responseBuilder = Response.status(404);
-      responseBuilder.entity("File not found");
-      return responseBuilder.build();
+      status = Response.Status.NOT_FOUND.getStatusCode();
+      contentType = TEXT_PLAIN;
+      valueAsString = "File not found";
     }
+    responseBuilder = Response
+        .status(status)
+        .cacheControl(cacheControl)
+        .header(CONTENT_TYPE, contentType)
+        .entity(valueAsString);
+    return responseBuilder.build();
   }
 
   private FileResource createFileResourceFromFile(File file) throws Exception {

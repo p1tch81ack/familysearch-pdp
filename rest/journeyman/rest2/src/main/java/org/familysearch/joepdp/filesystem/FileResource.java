@@ -6,6 +6,7 @@ import javax.xml.bind.annotation.*;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sun.xml.txw2.annotation.*;
 
 /**
