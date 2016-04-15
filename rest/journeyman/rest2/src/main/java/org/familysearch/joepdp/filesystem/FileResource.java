@@ -19,6 +19,8 @@ import com.sun.xml.txw2.annotation.*;
 public class FileResource {
   @XmlAttribute
   private String href;
+  @XmlAttribute
+  private String contentType;
   @XmlElement
   private String name;
   @XmlElement
@@ -33,6 +35,15 @@ public class FileResource {
 
   public void setHref(String href) {
     this.href = href;
+  }
+
+
+  public String getContentType() {
+    return contentType;
+  }
+
+  public void setContentType(String contentType) {
+    this.contentType = contentType;
   }
 
   public String getName() {

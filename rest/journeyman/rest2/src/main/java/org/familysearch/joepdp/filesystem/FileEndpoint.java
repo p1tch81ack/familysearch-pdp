@@ -4,22 +4,26 @@ import java.io.File;
 import java.io.StringWriter;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import javax.activation.MimetypesFileTypeMap;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
-import javax.ws.rs.core.*;
+import javax.ws.rs.core.CacheControl;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static javax.ws.rs.core.HttpHeaders.*;
+import static javax.ws.rs.core.HttpHeaders.ACCEPT;
+import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.*;
 
 @Path("/")
@@ -47,32 +51,39 @@ public class FileEndpoint {
   }
 
   private Response getResponseFromFile(File file, List<String> accepts) throws Exception {
-    FileResource rootFileResource=null;
+    FileResource fileResource=null;
     int status;
     if(file == null) {
-      rootFileResource = createRootFileResource();
-      populateFileResourceWithChildren(rootFileResource, File.listRoots());
+      fileResource = createRootFileResource();
+      populateFileResourceWithChildren(fileResource, File.listRoots());
     }
     else if (file.exists()) {
       if(file.isDirectory()) {
-        rootFileResource = createFileResourceFromFile(file);
+        fileResource = createFileResourceFromFile(file);
         File parentFile = file.getParentFile();
         if(parentFile != null) {
-          rootFileResource.setParent(createFileResourceFromFile(parentFile));
+          fileResource.setParent(createFileResourceFromFile(parentFile));
         }
         else {
-          rootFileResource.setParent(createRootFileResource());
+          fileResource.setParent(createRootFileResource());
         }
-        populateFileResourceWithChildren(rootFileResource, file.listFiles());
+        populateFileResourceWithChildren(fileResource, file.listFiles());
       }
       else {
-        String contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(file);
-        return Response.ok(file, contentType).cacheControl(cacheControl).build();
+        String contentType = Files.probeContentType(file.toPath());
+        Response.ResponseBuilder responseBuilder = Response.ok();
+        if(contentType != null) {
+          responseBuilder = responseBuilder.header(CONTENT_TYPE, contentType);
+        }
+        return responseBuilder
+            .entity(file)
+            .cacheControl(cacheControl)
+            .build();
       }
     }
     String valueAsString;
     String contentType;
-    if(rootFileResource != null) {
+    if(fileResource != null) {
       status = Response.Status.OK.getStatusCode();
       if(accepts.contains(APPLICATION_XML) && !accepts.contains(APPLICATION_JSON)) {
         contentType = APPLICATION_XML;
@@ -80,13 +91,13 @@ public class FileEndpoint {
             .createMarshaller();
         marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
         StringWriter stringWriter = new StringWriter();
-        marshaller.marshal(rootFileResource, stringWriter);
+        marshaller.marshal(fileResource, stringWriter);
         valueAsString = stringWriter.toString();      }
       else {
         contentType = APPLICATION_JSON;
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        valueAsString = objectMapper.writeValueAsString(rootFileResource);
+        valueAsString = objectMapper.writeValueAsString(fileResource);
       }
     }
     else {
@@ -106,6 +117,7 @@ public class FileEndpoint {
     FileResource fileResource = new FileResource();
     // web servers don't like the "\" character to be escaped
     fileResource.setHref(uriInfo.getBaseUri() + "file/" + URLEncoder.encode(file.getPath(), "UTF-8").replaceAll("%5C", "\\\\"));
+    fileResource.setContentType(Files.probeContentType(file.toPath()));
     String name = file.getName();
     if(name.length()<1) {
       name = file.getPath();
