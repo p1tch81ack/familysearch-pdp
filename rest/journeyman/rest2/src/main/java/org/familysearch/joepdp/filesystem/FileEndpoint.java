@@ -67,7 +67,10 @@ public class FileEndpoint {
         else {
           fileResource.setParent(createRootFileResource());
         }
-        populateFileResourceWithChildren(fileResource, file.listFiles());
+        File[] children = file.listFiles();
+        if(children!=null) {
+          populateFileResourceWithChildren(fileResource, children);
+        }
       }
       else {
         String contentType = Files.probeContentType(file.toPath());
@@ -117,6 +120,7 @@ public class FileEndpoint {
     FileResource fileResource = new FileResource();
     // web servers don't like the "\" character to be escaped
     fileResource.setHref(uriInfo.getBaseUri() + "file/" + URLEncoder.encode(file.getPath(), "UTF-8").replaceAll("%5C", "\\\\"));
+    fileResource.setIsDirectory(file.isDirectory());
     fileResource.setContentType(Files.probeContentType(file.toPath()));
     String name = file.getName();
     if(name.length()<1) {
@@ -130,6 +134,7 @@ public class FileEndpoint {
     FileResource rootFileResource = new FileResource();
     rootFileResource.setHref(uriInfo.getBaseUriBuilder().clone().path("file").build().toASCIIString());
     rootFileResource.setName("ROOT");
+    rootFileResource.setIsDirectory(true);
     return rootFileResource;
   }
 

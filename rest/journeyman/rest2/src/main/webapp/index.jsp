@@ -1,68 +1,160 @@
 <html>
 <head>
+    <style>
+        table {
+            border-collapse: collapse;
+        }
+
+        .plus {
+            border: 1px solid black;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+
+        .minus {
+            border: 1px solid black;
+            padding-left: 6px;
+            padding-right: 6px;
+        }
+
+        .parentContainer {
+            padding-left: 0px;
+            padding-right: 2px;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+
+        .treeLineContainer {
+            padding: 0px;
+        }
+
+        .childTop {
+            float: top;
+            height: 11px;
+            width: 100% t;
+            border-left: 1px;
+            border-right: 0px;
+            border-top: 0px;
+            border-bottom: 1px;
+            border-style: solid;
+            border-color: black;
+        }
+
+        .childBottom {
+            position: absolute;
+            top: 11px;
+            bottom: 0px;
+            width: 100%;
+            border-left: 1px;
+            border-right: 0px;
+            border-top: 0px;
+            border-bottom: 0px;
+            border-style: solid;
+            border-color: black;
+        }
+
+        .childRight {
+            float: right;
+            width: 50%;
+            height: 100%;
+            position: relative;
+        }
+
+        .childLeft {
+            float: left;
+            width: 50%;
+            height: 100%;
+        }
+
+        .grid {
+            display: grid;
+        }
+
+        .fill {
+            width: 100%;
+            display: inline-block;
+            height: 100%;
+            padding: 0px;
+            vertical-align: top;
+        }
+    </style>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
     <script type="text/javascript">
-        function expand(listItem, href) {
+        function expand($parent, $clickable, href) {
             $.ajax(href).done(function (file) {
-                var subList = document.createElement("ul")
-                listItem.appendChild(subList)
-                for (childFile of file.children) {
-                    createListItem(childFile, subList);
+                for (var i = 0; i < file.children.length; i++) {
+                    var childFile = file.children[i];
+                    var $childRow = $("<tr></tr>").addClass("child");
+                    $parent.append($childRow);
+                    var $treeLineCell = $("<td></td>").addClass("treeLineContainer");
+                    $childRow.append($treeLineCell);
+                    var $fillGridDiv = $("<div></div>").addClass("fill grid");
+                    $treeLineCell.append($fillGridDiv);
+                    var $rightDiv = $("<div></div>").addClass("childRight");
+                    $fillGridDiv.append($rightDiv);
+                    var $topDiv = $("<div></div>").addClass("childTop");
+                    $rightDiv.append($topDiv);
+                    if (i < (file.children.length - 1)) {
+                        var $bottomDiv = $("<div></div>").addClass("childBottom");
+                        $rightDiv.append($bottomDiv);
+                    }
+                    var $childCell = $("<td></td>").addClass("parentContainer");
+                    $childRow.append($childCell);
+                    if (childFile.isDirectory) {
+                        createDirectoryView(childFile, $childCell);
+                    }
+                    else {
+                        createFileView(childFile, $childCell);
+                    }
                 }
             });
+            var $clickParent = $clickable.parent();
+            $clickable.remove();
+            var $clickCell = $("<td>-</td>").addClass("minus");
+            $clickParent.prepend($clickCell);
+            $clickCell.click(function () {
+                collapse($parent, $clickCell, href);
+            });
         }
-        function collapse(listItem) {
-            var lists = listItem.getElementsByTagName("ul");
-//            listItem.removeChild(lists[0]);
-            for (var i = 0; i < lists.length; i++) {
-                var list = lists[i];
-//            for(var list of lists) {
-                listItem.removeChild(list);
-            }
+
+        function collapse($parent, $clickable, href) {
+            $parent.find(".child").remove();
+            var $clickParent = $clickable.parent();
+            $clickable.remove();
+            var $clickCell = $("<td>+</td>").addClass("plus");
+            $clickParent.prepend($clickCell);
+            $clickCell.click(function () {
+                expand($parent, $clickCell, href);
+            });
         }
-        function createListItem(file, list) {
-            var listItem = document.createElement("li")
-            var span = document.createElement("span")
-            span.setAttribute("class", "Collapsable")
-            listItem.setAttribute("href", file.href)
-            listItem.appendChild(span)
-            var textNode = document.createTextNode(file.name)
-            span.appendChild(textNode)
-            list.appendChild(listItem)
-            /*
-             var id = listItem.getElementsByTagName("span")[0].getAttribute("id");
-             var name = listItem.getElementByTagName("span")[0].innerText
-             */
-            span.onclick = function () {
-                lists = listItem.getElementsByTagName("ul")
-                if (lists.length < 1) {
-                    expand(listItem, file.href);
-                }
-                else {
-                    collapse(listItem)
-                }
-            };
-            return listItem;
+
+        function createFileView(file, $parent) {
+            var $anchor = $("<a>" + file.name + "</a>").attr("href", file.href).attr("target", "_blank");
+            $parent.append($anchor);
+            return $anchor;
         }
-        function getSubList(listItem) {
-            var list
-            lists = listItem.getElementsByTagName("ul")
-            if (lists.length < 1) {
-                list = document.createElement("ul")
-                listItem.appendChild(list)
-            }
-            else {
-                list = lists[0]
-            }
-            return list
+
+        function createDirectoryView(file, $parent) {
+            var $table = $("<table></table>");
+            $parent.append($table);
+            var $row = $("<tr></tr>");
+            $table.append($row);
+            var $clickCell = $("<td>+</td>").addClass("plus");
+            $row.append($clickCell);
+            var $nameCell = $("<td>" + file.name + "</td>");
+            $row.append($nameCell);
+            $clickCell.click(function () {
+                expand($table, $clickCell, file.href);
+            });
+            return [$table, $clickCell];
         }
+
         $(document).ready(
                 function () {
                     $.ajax("rest/file").done(function (file) {
-                        list = document.createElement("ul")
-                        $('#treeDiv')[0].appendChild(list)
-                        var rootListItem = createListItem(file, list);
-                        expand(rootListItem, file.href);
+                        var $treeDiv = $('#treeDiv');
+                        var tuple = createDirectoryView(file, $treeDiv);
+                        expand(tuple[0], tuple[1], file.href);
                     })
                 }
         )
@@ -70,6 +162,6 @@
 </head>
 <body>
 <h2>Filesystem Browser</h2>
-<div id="treeDiv"/>
+<div id="treeDiv"></div>
 </body>
 </html>
